@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="240" viewBox="0 0 960 240">
+  <rect width="960" height="240" rx="18" fill="#eef2f7"/>
+  <g fill="none" stroke="#8a94a5" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="338" y="50" width="150" height="130" rx="12"/>
+    <circle cx="380" cy="91" r="14"/>
+    <path d="m350 161 43-43 31 31 21-21 31 33"/>
+    <path d="M527 72 433 166"/>
+  </g>
+  <text x="535" y="112" fill="#4f5968" font-family="Segoe UI, sans-serif" font-size="25" font-weight="600">Remote image blocked</text>
+  <text x="535" y="146" fill="#768193" font-family="Segoe UI, sans-serif" font-size="18">Enable remote images from the plugin menu to load it.</text>
+</svg>

@@ -1,0 +1,5 @@
+#pragma once
+
+#define IDI_READER_LIGHT 101
+#define IDI_READER_DARK 102
+#define IDB_READER_TOOLBAR 103

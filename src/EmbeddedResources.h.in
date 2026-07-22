@@ -1,0 +1,8 @@
+#pragma once
+#include <string_view>
+
+namespace nppmr::resources {
+inline constexpr std::string_view kReaderCss = R"NPPMR_CSS(@NPPMR_READER_CSS@)NPPMR_CSS";
+inline constexpr std::string_view kReaderJs = R"NPPMR_JS(@NPPMR_READER_JS@)NPPMR_JS";
+inline constexpr std::string_view kBlockedImageSvg = R"NPPMR_SVG(@NPPMR_BLOCKED_IMAGE_SVG@)NPPMR_SVG";
+} // namespace nppmr::resources

@@ -1,0 +1,13 @@
+out/
+build/
+.vs/
+CMakeUserPresets.json
+*.user
+*.suo
+*.VC.db
+*.VC.VC.opendb
+*.zip
+__pycache__/
+cmake/
+cmake-4.4.0/
+.serena/

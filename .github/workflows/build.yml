@@ -1,0 +1,59 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [x64, Win32, ARM64]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate source
+        shell: pwsh
+        run: |
+          python scripts/validate_source.py
+          node --check resources/reader.js
+
+      - name: Configure
+        shell: pwsh
+        run: >-
+          cmake -S . -B out/build/${{ matrix.architecture }}
+          -G "Visual Studio 17 2022"
+          -A ${{ matrix.architecture }}
+          -DNPPMR_BUILD_TESTS=ON
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build out/build/${{ matrix.architecture }} --config Release --parallel
+
+      - name: Test
+        if: matrix.architecture != 'ARM64'
+        shell: pwsh
+        run: ctest --test-dir out/build/${{ matrix.architecture }} -C Release --output-on-failure
+
+      - name: Stage
+        shell: pwsh
+        run: cmake --install out/build/${{ matrix.architecture }} --config Release --prefix out/install/${{ matrix.architecture }}
+
+      - name: Package
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "out/install/${{ matrix.architecture }}/NppMarkdownReader" `
+            -DestinationPath "NppMarkdownReader-${{ matrix.architecture }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NppMarkdownReader-${{ matrix.architecture }}
+          path: NppMarkdownReader-${{ matrix.architecture }}.zip
+          if-no-files-found: error

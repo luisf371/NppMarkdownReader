@@ -1,0 +1,52 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base-vs2022",
+      "hidden": true,
+      "generator": "Visual Studio 17 2022",
+      "cacheVariables": { "NPPMR_BUILD_TESTS": "ON" }
+    },
+    {
+      "name": "vs2022-x64",
+      "displayName": "Visual Studio 2022 x64",
+      "inherits": "base-vs2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/out/build/x64"
+    },
+    {
+      "name": "vs2022-win32",
+      "displayName": "Visual Studio 2022 Win32",
+      "inherits": "base-vs2022",
+      "architecture": "Win32",
+      "binaryDir": "${sourceDir}/out/build/win32"
+    },
+    {
+      "name": "vs2022-arm64",
+      "displayName": "Visual Studio 2022 ARM64",
+      "inherits": "base-vs2022",
+      "architecture": "ARM64",
+      "binaryDir": "${sourceDir}/out/build/arm64"
+    }
+  ],
+  "buildPresets": [
+    { "name": "release-x64", "configurePreset": "vs2022-x64", "configuration": "Release" },
+    { "name": "release-win32", "configurePreset": "vs2022-win32", "configuration": "Release" },
+    { "name": "release-arm64", "configurePreset": "vs2022-arm64", "configuration": "Release" }
+  ],
+  "testPresets": [
+    {
+      "name": "release-x64",
+      "configurePreset": "vs2022-x64",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "release-win32",
+      "configurePreset": "vs2022-win32",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}
