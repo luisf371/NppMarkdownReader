@@ -19,7 +19,7 @@ For each executable architecture:
 1. Place the DLL in the required plugin subfolder.
 2. Start a clean portable Notepad++ instance.
 3. Confirm no plugin load error.
-4. Confirm all ten commands and toolbar icon appear.
+4. Confirm all fourteen commands and toolbar icon appear.
 5. Confirm unload/exit produces no crash.
 
 ## Core rendering

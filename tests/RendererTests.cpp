@@ -28,6 +28,21 @@ int main() {
         "[bad](javascript:alert(1))\n\n<script>alert(1)</script>", options);
 
     Require(rendered.success, "Markdown should render");
+    Require(rendered.html.find("class=\"reader-toolbar\"") != std::string::npos,
+        "reader header missing");
+    Require(rendered.html.find("id=\"reading-progress\"") != std::string::npos,
+        "reading progress missing");
+    Require(rendered.html.find("--content-width:860px") != std::string::npos,
+        "content width missing");
+
+    options.showHeader = false;
+    const auto hiddenHeader = renderer.Render("# Heading", options);
+    Require(hiddenHeader.success, "header toggle render failed");
+    Require(hiddenHeader.html.find("class=\"reader-toolbar\" hidden") != std::string::npos,
+        "reader header was not hidden");
+    Require(hiddenHeader.html.find("id=\"reading-progress\"") != std::string::npos,
+        "reading progress disappeared with header");
+    options.showHeader = true;
     Require(rendered.html.find("<h1>") != std::string::npos, "heading output missing");
     Require(rendered.html.find("<table>") != std::string::npos, "table output missing");
     Require(rendered.html.find("https://document.local/images/picture%20one.png") != std::string::npos,

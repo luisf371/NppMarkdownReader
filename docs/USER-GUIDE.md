@@ -42,7 +42,7 @@ Paths are constrained to that directory tree. Remote images are blocked by defau
 
 ## Themes and sizing
 
-Use the plugin menu to follow Notepad++ dark mode or force light/dark. Font size changes apply immediately to all visible reader panes. Defaults:
+Use the plugin menu to follow Notepad++ dark mode or force light/dark. Font size and content-width changes apply immediately to all visible reader panes. Use **Show Reader Header** to hide the filename bar without removing the reading progress bar. Defaults:
 
 - font size: 17 px;
 - line height: 1.72;

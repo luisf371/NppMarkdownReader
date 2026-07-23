@@ -59,7 +59,7 @@ plugin = text("src/PluginMain.cpp")
 for export in ("setInfo", "getName", "getFuncsArray", "beNotified", "messageProc", "isUnicode"):
     require(re.search(rf'__declspec\(dllexport\).*\b{export}\s*\(', plugin) is not None,
             f"Missing plugin export: {export}")
-require(plugin.count("SetCommand(CommandIndex::") == 10, "Expected exactly ten command registrations")
+require(plugin.count("SetCommand(CommandIndex::") == 14, "Expected exactly fourteen command registrations")
 
 api = text("src/PluginApi.h")
 require("int modificationType" in api, "SCNotification does not expose modificationType")
@@ -80,7 +80,7 @@ host = text("src/WebViewHost.cpp")
 for marker in (
     "COREWEBVIEW2_WEB_RESOURCE_CONTEXT_IMAGE", "maximumImageBytes", "PrintToPdf",
     "put_Cancel(TRUE)", "get_Source(&rawSource)", "DispatchShortcut", "WM_KEYDOWN",
-    "ERROR_FILE_TOO_LARGE",
+    "ERROR_FILE_TOO_LARGE", "ExecuteScript", "add_NavigationCompleted", "pageReady_",
 ):
     require(marker in host, f"WebView host control missing: {marker}")
 require("SetVirtualHostNameToFolderMapping" not in host, "Unrestricted virtual-host folder mapping is present")

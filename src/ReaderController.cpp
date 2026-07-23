@@ -204,6 +204,16 @@ bool ReaderController::UseDarkTheme() const {
     }
 }
 
+ReaderPresentation ReaderController::CurrentPresentation() const {
+    const ReaderSettings& settings = settingsStore_.Values();
+    return ReaderPresentation{
+        settings.fontSizePx,
+        settings.contentWidthPx,
+        settings.lineHeight,
+        UseDarkTheme(),
+        settings.showHeader};
+}
+
 bool ReaderController::EnsureHost(const int view) {
     EnsureReady();
     if (view != MAIN_VIEW && view != SUB_VIEW) return false;
@@ -317,14 +327,16 @@ void ReaderController::RenderView(const int view, const ViewDocument& document, 
     }
 
     try {
+        const ReaderPresentation presentation = CurrentPresentation();
         RenderOptions options;
         options.title = FileNameForDisplay(document.fullPath);
         options.documentDirectory = DocumentDirectory(document.fullPath);
-        options.darkTheme = UseDarkTheme();
+        options.darkTheme = presentation.darkTheme;
         options.allowRemoteImages = settingsStore_.Values().allowRemoteImages;
-        options.fontSizePx = settingsStore_.Values().fontSizePx;
-        options.contentWidthPx = settingsStore_.Values().contentWidthPx;
-        options.lineHeight = settingsStore_.Values().lineHeight;
+        options.fontSizePx = presentation.fontSizePx;
+        options.contentWidthPx = presentation.contentWidthPx;
+        options.showHeader = presentation.showHeader;
+        options.lineHeight = presentation.lineHeight;
         options.initialScrollRatio = state.scrollRatio;
 
         const RenderResult rendered = renderer_.Render(ReadScintillaTextUtf8(document.scintilla), options);
@@ -338,7 +350,7 @@ void ReaderController::RenderView(const int view, const ViewDocument& document, 
         }
 
         displayedBuffers_[view] = document.key.bufferId;
-        hosts_[view]->ShowDocument(rendered.html, options.documentDirectory);
+        hosts_[view]->ShowDocument(rendered.html, options.documentDirectory, presentation);
     } catch (const std::exception& exception) {
         state.enabled = false;
         hosts_[view]->Hide();
@@ -513,25 +525,51 @@ void ReaderController::ExportCurrentPdf() {
 void ReaderController::IncreaseFontSize() {
     EnsureReady();
     settingsStore_.Values().fontSizePx = std::clamp(settingsStore_.Values().fontSizePx + 1, 12, 30);
-    ApplySettingsChange();
+    ApplyPresentationChange();
 }
 
 void ReaderController::DecreaseFontSize() {
     EnsureReady();
     settingsStore_.Values().fontSizePx = std::clamp(settingsStore_.Values().fontSizePx - 1, 12, 30);
-    ApplySettingsChange();
+    ApplyPresentationChange();
 }
 
 void ReaderController::ResetFontSize() {
     EnsureReady();
     settingsStore_.Values().fontSizePx = 17;
-    ApplySettingsChange();
+    ApplyPresentationChange();
+}
+
+void ReaderController::IncreaseContentWidth() {
+    EnsureReady();
+    settingsStore_.Values().contentWidthPx = std::clamp(
+        settingsStore_.Values().contentWidthPx + 80, 560, 1400);
+    ApplyPresentationChange();
+}
+
+void ReaderController::DecreaseContentWidth() {
+    EnsureReady();
+    settingsStore_.Values().contentWidthPx = std::clamp(
+        settingsStore_.Values().contentWidthPx - 80, 560, 1400);
+    ApplyPresentationChange();
+}
+
+void ReaderController::ResetContentWidth() {
+    EnsureReady();
+    settingsStore_.Values().contentWidthPx = 860;
+    ApplyPresentationChange();
+}
+
+void ReaderController::ToggleReaderHeader() {
+    EnsureReady();
+    settingsStore_.Values().showHeader = !settingsStore_.Values().showHeader;
+    ApplyPresentationChange();
 }
 
 void ReaderController::SetTheme(const ThemeMode mode) {
     EnsureReady();
     settingsStore_.Values().theme = mode;
-    ApplySettingsChange();
+    ApplyPresentationChange();
 }
 
 void ReaderController::ToggleRemoteImages() {
@@ -546,6 +584,22 @@ void ReaderController::ToggleRemoteImages() {
     }
     settingsStore_.Values().allowRemoteImages = enabling;
     ApplySettingsChange();
+}
+
+void ReaderController::ApplyPresentationToVisibleViews() {
+    if (!ready_ || shuttingDown_) return;
+    const ReaderPresentation presentation = CurrentPresentation();
+    for (int view = MAIN_VIEW; view <= SUB_VIEW; ++view) {
+        if (hosts_[view] && hosts_[view]->IsVisible() && displayedBuffers_[view] != 0) {
+            hosts_[view]->ApplyPresentation(presentation);
+        }
+    }
+}
+
+void ReaderController::ApplyPresentationChange() {
+    settingsStore_.Save();
+    ApplyPresentationToVisibleViews();
+    UpdateMenuChecks();
 }
 
 void ReaderController::ApplySettingsChange() {
@@ -587,6 +641,8 @@ void ReaderController::UpdateMenuChecks() {
         settingsStore_.Values().theme == ThemeMode::Dark);
     SetMenuCheck(CommandIndex::AllowRemoteImages,
         settingsStore_.Values().allowRemoteImages);
+    SetMenuCheck(CommandIndex::ShowReaderHeader,
+        settingsStore_.Values().showHeader);
 }
 
 void ReaderController::RegisterToolbarIcon() {
@@ -695,8 +751,10 @@ void ReaderController::OnNotification(const SCNotification* const notification) 
         break;
     case NPPN_DARKMODECHANGED:
         EnsureReady();
-        if (settingsStore_.Values().theme == ThemeMode::FollowNotepad) RefreshAllViews();
-        else UpdateMenuChecks();
+        if (settingsStore_.Values().theme == ThemeMode::FollowNotepad) {
+            ApplyPresentationToVisibleViews();
+        }
+        UpdateMenuChecks();
         break;
     case NPPN_GLOBALMODIFIED:
         // Replace All intentionally does not emit the normal SCN_MODIFIED

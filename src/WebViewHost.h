@@ -23,6 +23,14 @@ struct WebViewCallbacks {
     std::function<void(std::wstring)> onExternalNavigation;
 };
 
+struct ReaderPresentation {
+    int fontSizePx = 17;
+    int contentWidthPx = 860;
+    double lineHeight = 1.72;
+    bool darkTheme = false;
+    bool showHeader = true;
+};
+
 class WebViewHost final {
 public:
     WebViewHost(HINSTANCE instance, HWND nppWindow, HWND targetScintilla, int viewIndex,
@@ -37,7 +45,9 @@ public:
     bool IsVisible() const noexcept { return visible_; }
     int ViewIndex() const noexcept { return viewIndex_; }
 
-    void ShowDocument(std::string html, std::filesystem::path documentDirectory);
+    void ShowDocument(std::string html, std::filesystem::path documentDirectory,
+        ReaderPresentation presentation);
+    void ApplyPresentation(const ReaderPresentation& presentation);
     void Hide();
     void Focus();
     void ScheduleRefresh(unsigned delayMilliseconds = 220);
@@ -61,7 +71,12 @@ private:
     void EnsureInitialized();
     void CompleteControllerCreation(HRESULT result, ICoreWebView2Controller* controller);
     void ConfigureWebView();
+    HRESULT HandleNavigationCompleted(ICoreWebView2NavigationCompletedEventArgs* args);
     void NavigateCurrentDocument();
+    void ApplyPendingPresentation();
+    void RequestPresentationFallback(unsigned long long presentationRevision);
+    void ExecutePresentation(const ReaderPresentation& presentation,
+        unsigned long long presentationRevision);
     void SyncToTarget();
     void PaintPlaceholder();
     void SetFailure(HRESULT result, std::wstring context);
@@ -89,11 +104,16 @@ private:
 
     bool initializationStarted_ = false;
     bool visible_ = false;
+    bool pageReady_ = false;
     bool pdfInProgress_ = false;
+    UINT64 activeNavigationId_ = 0;
     unsigned long long revision_ = 0;
+    unsigned long long presentationRevision_ = 0;
+    unsigned long long fallbackRevision_ = 0;
     std::wstring statusText_ = L"Starting Markdown Reader…";
     std::string currentHtml_;
     std::filesystem::path documentDirectory_;
+    ReaderPresentation pendingPresentation_{};
 
     Microsoft::WRL::ComPtr<ICoreWebView2Environment> environment_;
     Microsoft::WRL::ComPtr<ICoreWebView2Controller> controller_;
@@ -101,6 +121,7 @@ private:
 
     EventRegistrationToken resourceToken_{};
     EventRegistrationToken navigationToken_{};
+    EventRegistrationToken navigationCompletedToken_{};
     EventRegistrationToken newWindowToken_{};
     EventRegistrationToken messageToken_{};
     EventRegistrationToken acceleratorToken_{};

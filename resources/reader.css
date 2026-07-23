@@ -84,6 +84,7 @@ body {
   font-size: 13px;
   line-height: 1.2;
 }
+.reader-toolbar[hidden] { display: none; }
 
 .reader-title {
   min-width: 0;

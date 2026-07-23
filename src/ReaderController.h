@@ -14,6 +14,7 @@
 
 namespace nppmr {
 
+struct ReaderPresentation;
 class WebViewHost;
 
 enum class CommandIndex : std::size_t {
@@ -22,6 +23,10 @@ enum class CommandIndex : std::size_t {
     IncreaseFont,
     DecreaseFont,
     ResetFont,
+    IncreaseContentWidth,
+    DecreaseContentWidth,
+    ResetContentWidth,
+    ShowReaderHeader,
     ThemeFollowNotepad,
     ThemeLight,
     ThemeDark,
@@ -46,6 +51,10 @@ public:
     void IncreaseFontSize();
     void DecreaseFontSize();
     void ResetFontSize();
+    void IncreaseContentWidth();
+    void DecreaseContentWidth();
+    void ResetContentWidth();
+    void ToggleReaderHeader();
     void SetTheme(ThemeMode mode);
     void ToggleRemoteImages();
     void ShowAbout() const;
@@ -108,6 +117,9 @@ private:
     void HandleLocalNavigation(int view, const std::string& relativeUrl);
     void HandleExternalNavigation(const std::wstring& uri) const;
 
+    ReaderPresentation CurrentPresentation() const;
+    void ApplyPresentationToVisibleViews();
+    void ApplyPresentationChange();
     void ApplySettingsChange();
     void UpdateMenuChecks();
     void SetMenuCheck(CommandIndex index, bool checked) const;

@@ -8,7 +8,7 @@ The native plugin lifecycle, same-pane overlay, rendering pipeline, settings, se
 
 ## Completed in this package
 
-- Native plugin exports and ten Notepad++ commands.
+- Native plugin exports and fourteen Notepad++ commands.
 - ABI-compatible Notepad++/Scintilla declarations used by the implementation.
 - Main-view and secondary-view WebView2 child hosts.
 - Per-buffer/per-view state and tab lifecycle handling, including Replace All refresh and toolbar icon-set changes.

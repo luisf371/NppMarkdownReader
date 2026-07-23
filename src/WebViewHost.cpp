@@ -9,10 +9,14 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <cstdint>
+#include <cwchar>
 #include <cwctype>
+#include <iomanip>
 #include <fstream>
 #include <limits>
+#include <locale>
 #include <memory>
 #include <sstream>
 #include <string_view>
@@ -151,12 +155,16 @@ LRESULT WebViewHost::HandleMessage(const UINT message, const WPARAM wParam, cons
     return DefWindowProcW(hostWindow_, message, wParam, lParam);
 }
 
-void WebViewHost::ShowDocument(std::string html, std::filesystem::path documentDirectory) {
+void WebViewHost::ShowDocument(std::string html, std::filesystem::path documentDirectory,
+    ReaderPresentation presentation) {
     if (!hostWindow_) return;
     const bool shouldTakeFocus = !visible_;
     currentHtml_ = std::move(html);
     documentDirectory_ = std::move(documentDirectory);
+    pendingPresentation_ = presentation;
     ++revision_;
+    ++presentationRevision_;
+    pageReady_ = false;
     visible_ = true;
     statusText_ = L"Starting Markdown Reader…";
     ShowWindow(hostWindow_, SW_SHOWNA);
@@ -165,6 +173,13 @@ void WebViewHost::ShowDocument(std::string html, std::filesystem::path documentD
     EnsureInitialized();
     if (webView_) NavigateCurrentDocument();
     if (shouldTakeFocus) Focus();
+}
+
+void WebViewHost::ApplyPresentation(const ReaderPresentation& presentation) {
+    if (!hostWindow_) return;
+    pendingPresentation_ = presentation;
+    ++presentationRevision_;
+    if (pageReady_) ApplyPendingPresentation();
 }
 
 void WebViewHost::Hide() {
@@ -261,6 +276,14 @@ void WebViewHost::ConfigureWebView() {
                 return state && state->owner ? state->owner->HandleNavigationStarting(args) : S_OK;
             }).Get(), &navigationToken_);
 
+    webView_->add_NavigationCompleted(
+        Callback<ICoreWebView2NavigationCompletedEventHandler>(
+            [lifetime](ICoreWebView2*, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
+                const auto state = lifetime.lock();
+                if (!state || !state->owner) return S_OK;
+                return state->owner->HandleNavigationCompleted(args);
+            }).Get(), &navigationCompletedToken_);
+
     webView_->add_NewWindowRequested(
         Callback<ICoreWebView2NewWindowRequestedEventHandler>(
             [lifetime](ICoreWebView2*, ICoreWebView2NewWindowRequestedEventArgs* args) -> HRESULT {
@@ -283,8 +306,117 @@ void WebViewHost::ConfigureWebView() {
             }).Get(), &acceleratorToken_);
 }
 
+HRESULT WebViewHost::HandleNavigationCompleted(
+    ICoreWebView2NavigationCompletedEventArgs* args) {
+    if (!args) return E_POINTER;
+
+    UINT64 navigationId = 0;
+    BOOL succeeded = FALSE;
+    if (FAILED(args->get_NavigationId(&navigationId)) ||
+        FAILED(args->get_IsSuccess(&succeeded))) {
+        return S_OK;
+    }
+    if (navigationId != activeNavigationId_) return S_OK;
+
+    pageReady_ = succeeded != FALSE;
+    if (pageReady_) {
+        ApplyPendingPresentation();
+    } else if (visible_) {
+        SetFailure(E_FAIL, L"The rendered Markdown could not be loaded");
+    }
+    return S_OK;
+}
+
+void WebViewHost::ApplyPendingPresentation() {
+    if (pageReady_ && webView_) {
+        ExecutePresentation(pendingPresentation_, presentationRevision_);
+    }
+}
+
+void WebViewHost::RequestPresentationFallback(
+    const unsigned long long presentationRevision) {
+    if (presentationRevision != presentationRevision_ ||
+        presentationRevision == fallbackRevision_) {
+        return;
+    }
+    fallbackRevision_ = presentationRevision;
+    if (callbacks_.onRefreshRequested) callbacks_.onRefreshRequested();
+}
+
+void WebViewHost::ExecutePresentation(const ReaderPresentation& presentation,
+    const unsigned long long presentationRevision) {
+    if (!webView_ || !pageReady_) return;
+
+    wchar_t* rawSource = nullptr;
+    if (FAILED(webView_->get_Source(&rawSource))) {
+        RequestPresentationFallback(presentationRevision);
+        return;
+    }
+    const std::wstring source = TakeCoTaskString(rawSource);
+    if (StripQueryAndFragment(source) != L"https://reader.local/document") {
+        RequestPresentationFallback(presentationRevision);
+        return;
+    }
+
+    const int fontSize = std::clamp(presentation.fontSizePx, 12, 30);
+    const int contentWidth = std::clamp(presentation.contentWidthPx, 560, 1400);
+    const double lineHeight = std::clamp(
+        std::isfinite(presentation.lineHeight) ? presentation.lineHeight : 1.72, 1.2, 2.2);
+
+    std::wostringstream script;
+    script.imbue(std::locale::classic());
+    script << LR"JS((() => {
+const s = {revision:)JS" << presentationRevision
+        << L",fontSizePx:" << fontSize
+        << L",contentWidthPx:" << contentWidth
+        << L",lineHeight:" << std::fixed << std::setprecision(2) << lineHeight
+        << L",dark:" << (presentation.darkTheme ? L"true" : L"false")
+        << L",showHeader:" << (presentation.showHeader ? L"true" : L"false")
+        << LR"JS(};
+if (location.origin !== "https://reader.local" ||
+    location.pathname !== "/document") return false;
+const root = document.documentElement;
+const header = document.querySelector(".reader-toolbar");
+if (!root || !header) return false;
+if (Number(root.dataset.settingsRevision || "0") >= s.revision) return true;
+const oldMax = Math.max(0, root.scrollHeight - window.innerHeight);
+const ratio = oldMax === 0 ? 0 : Math.min(1, Math.max(0, window.scrollY / oldMax));
+root.style.setProperty("--font-size", String(s.fontSizePx) + "px");
+root.style.setProperty("--content-width", String(s.contentWidthPx) + "px");
+root.style.setProperty("--line-height", String(s.lineHeight));
+root.dataset.theme = s.dark ? "dark" : "light";
+header.hidden = !s.showHeader;
+root.dataset.settingsRevision = String(s.revision);
+window.requestAnimationFrame(() => {
+    const newMax = Math.max(0, root.scrollHeight - window.innerHeight);
+    window.scrollTo({top: ratio * newMax, behavior: "auto"});
+    window.dispatchEvent(new Event("scroll"));
+});
+return true;
+})())JS";
+
+    const std::weak_ptr<LifetimeState> lifetime = lifetime_;
+    const HRESULT started = webView_->ExecuteScript(
+        script.str().c_str(),
+        Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+            [lifetime, presentationRevision](const HRESULT result,
+                const wchar_t* resultJson) -> HRESULT {
+                const auto state = lifetime.lock();
+                if (!state || !state->owner) return S_OK;
+
+                WebViewHost* self = state->owner;
+                const bool applied = SUCCEEDED(result) && resultJson &&
+                    std::wcscmp(resultJson, L"true") == 0;
+                if (!applied) self->RequestPresentationFallback(presentationRevision);
+                return S_OK;
+            }).Get());
+
+    if (FAILED(started)) RequestPresentationFallback(presentationRevision);
+}
+
 void WebViewHost::NavigateCurrentDocument() {
     if (!webView_) return;
+    pageReady_ = false;
     std::wostringstream uri;
     uri << L"https://reader.local/document?revision=" << revision_;
     const HRESULT result = webView_->Navigate(uri.str().c_str());
@@ -438,9 +570,15 @@ HRESULT WebViewHost::HandleNavigationStarting(ICoreWebView2NavigationStartingEve
     wchar_t* rawUri = nullptr;
     if (FAILED(args->get_Uri(&rawUri))) return S_OK;
     const std::wstring uri = TakeCoTaskString(rawUri);
-    if (StripQueryAndFragment(uri) == L"https://reader.local/document" || uri == L"about:blank") {
+    if (StripQueryAndFragment(uri) == L"https://reader.local/document") {
+        UINT64 navigationId = 0;
+        if (SUCCEEDED(args->get_NavigationId(&navigationId))) {
+            pageReady_ = false;
+            activeNavigationId_ = navigationId;
+        }
         return S_OK;
     }
+    if (uri == L"about:blank") return S_OK;
 
     args->put_Cancel(TRUE);
     constexpr std::wstring_view localPrefix = L"https://document.local/";
@@ -561,6 +699,7 @@ void WebViewHost::Shutdown() {
         KillTimer(hostWindow_, kSyncTimer);
         KillTimer(hostWindow_, kRefreshTimer);
     }
+    pageReady_ = false;
     if (controller_) controller_->Close();
     webView_.Reset();
     controller_.Reset();

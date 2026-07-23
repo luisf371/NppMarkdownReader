@@ -10,7 +10,7 @@ This package was created and statically inspected outside Windows. It has not ye
 - The rendered surface is read-only.
 - Click-to-edit source mapping is not implemented.
 - Scroll restoration uses a ratio, so images, tables, and code blocks can prevent exact source-to-rendered alignment.
-- Re-rendering reloads the page and may briefly reset transient selection or focus.
+- Source changes and remote-image policy changes reload the page; presentation-only settings update in place and preserve transient selection/focus when the page is ready.
 - Code blocks are styled and labeled but do not have token-level syntax highlighting.
 - Table of contents includes H2/H3 only and appears after a minimum heading count.
 

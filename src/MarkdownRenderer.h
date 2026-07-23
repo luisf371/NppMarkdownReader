@@ -13,6 +13,7 @@ struct RenderOptions {
     bool allowRemoteImages = false;
     int fontSizePx = 17;
     int contentWidthPx = 860;
+    bool showHeader = true;
     double lineHeight = 1.72;
     double initialScrollRatio = 0.0;
 };

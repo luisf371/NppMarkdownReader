@@ -156,10 +156,12 @@ RenderResult MarkdownRenderer::Render(const std::string_view markdown, const Ren
         << "<script defer src=\"https://reader.local/reader.js\"></script>\n"
         << "</head>\n"
         << "<body data-scroll=\"" << std::fixed << std::setprecision(6) << scroll << "\">\n"
-        << "<div id=\"reading-progress\" aria-hidden=\"true\"></div>\n"
-        << "<header class=\"reader-toolbar\"><div class=\"reader-title\">" << title
-        << "</div><div class=\"reader-hint\"><kbd>Esc</kbd> edit source</div></header>\n"
-        << "<div class=\"reader-layout\">\n"
+        << "<div id=\"reading-progress\" aria-hidden=\"true\"></div>\n";
+    page << "<header class=\"reader-toolbar\""
+         << (options.showHeader ? "" : " hidden")
+         << "><div class=\"reader-title\">" << title
+         << "</div><div class=\"reader-hint\"><kbd>Esc</kbd> edit source</div></header>\n";
+    page << "<div class=\"reader-layout\">\n"
         << "<main id=\"reader-content\" class=\"markdown-body\">\n"
         << fragment
         << "\n</main><nav id=\"reader-toc\" aria-label=\"Table of contents\"></nav>\n"

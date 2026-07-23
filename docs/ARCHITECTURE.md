@@ -86,8 +86,8 @@ These are synthetic origins. The plugin responds through WebView2 resource inter
 3. Source is read from Scintilla and converted to UTF-8 when needed.
 4. MD4C produces HTML; URLs are rewritten and the security envelope is added.
 5. The view host is shown over Scintilla and navigates to the synthetic document URL.
-6. Embedded assets and safe local images are supplied by the host.
-7. Source modifications—including Replace All—schedule a debounced re-render.
+6. Presentation-only settings update the live page; embedded assets and safe local images are supplied by the host.
+7. Source modifications—including Replace All—and remote-image policy changes schedule a full debounced re-render.
 8. Exiting hides the host, restores proportional Scintilla scroll, restores the caret, and returns focus.
 
 ## Split views
