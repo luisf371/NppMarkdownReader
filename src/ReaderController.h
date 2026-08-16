@@ -85,6 +85,16 @@ private:
         std::wstring fullPath;
     };
 
+    // Identifies the page a host still holds after being hidden, so switching
+    // back to the same buffer can re-show it without a fresh render/navigation.
+    struct RetainedPage {
+        std::uintptr_t bufferId = 0;
+        std::size_t contentHash = 0;
+        std::size_t contentLength = 0;
+        unsigned long long renderSerial = 0;
+        unsigned long long presentationSerial = 0;
+    };
+
     ReaderController() = default;
     ~ReaderController() = default;
     ReaderController(const ReaderController&) = delete;
@@ -103,6 +113,7 @@ private:
     bool EnsureHost(int view);
     void RefreshAllViews();
     void RefreshView(int view);
+    bool TryReuseRetainedPage(int view, const ViewDocument& document);
     void RenderView(int view, const ViewDocument& document, DocumentState& state);
     void ScheduleRefreshForBuffer(std::uintptr_t bufferId);
     void DisableView(int view, bool restoreEditorFocus = true);
@@ -145,7 +156,13 @@ private:
 
     std::array<std::unique_ptr<WebViewHost>, 2> hosts_;
     std::array<std::uintptr_t, 2> displayedBuffers_{};
+    std::array<RetainedPage, 2> retainedPages_{};
     std::unordered_map<DocumentKey, DocumentState, DocumentKeyHash> documentStates_;
+
+    // Bumped when anything outside the buffer text changes what a render would
+    // produce (title/path/policy), or when presentation values change in place.
+    unsigned long long renderSerial_ = 0;
+    unsigned long long presentationSerial_ = 0;
 
     HBITMAP toolbarBitmap_ = nullptr;
     HICON toolbarLightIcon_ = nullptr;

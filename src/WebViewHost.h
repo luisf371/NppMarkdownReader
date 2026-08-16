@@ -43,11 +43,13 @@ public:
     bool IsCreated() const noexcept { return hostWindow_ != nullptr; }
     bool IsReady() const noexcept { return webView_ != nullptr; }
     bool IsVisible() const noexcept { return visible_; }
+    bool HasReadyPage() const noexcept { return webView_ != nullptr && pageReady_; }
     int ViewIndex() const noexcept { return viewIndex_; }
 
     void ShowDocument(std::string html, std::filesystem::path documentDirectory,
         ReaderPresentation presentation);
     void ApplyPresentation(const ReaderPresentation& presentation);
+    void ReShow();
     void Hide();
     void Focus();
     void ScheduleRefresh(unsigned delayMilliseconds = 220);
@@ -109,7 +111,9 @@ private:
     UINT64 activeNavigationId_ = 0;
     unsigned long long revision_ = 0;
     unsigned long long presentationRevision_ = 0;
+    unsigned long long navigationStartPresentationRevision_ = 0;
     unsigned long long fallbackRevision_ = 0;
+    bool scrollReportsAccepted_ = false;
     std::wstring statusText_ = L"Starting Markdown Reader…";
     std::string currentHtml_;
     std::filesystem::path documentDirectory_;

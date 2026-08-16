@@ -153,10 +153,23 @@
   });
 
   const initial = Number.parseFloat(document.body.dataset.scroll || "0");
+  const pageRevision = new URLSearchParams(window.location.search).get("revision") || "";
+  let restoreAnnounced = false;
   const restoreScroll = () => {
     const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-    window.scrollTo({ top: Math.max(0, Math.min(1, initial)) * max, behavior: "auto" });
-    reportScroll();
+    // "instant" bypasses the page-wide smooth scrolling so the offset applies
+    // synchronously; "auto" defers to the CSS scroll-behavior and animates from
+    // the top, which makes any immediate scrollY read report the wrong ratio.
+    window.scrollTo({ top: Math.max(0, Math.min(1, initial)) * max, behavior: "instant" });
+    if (!restoreAnnounced) {
+      // First restore settled: hand the host the revision token so it can open
+      // its scroll-report gate. Reports before this point describe page setup,
+      // not reader position, and must not overwrite the saved ratio.
+      restoreAnnounced = true;
+      post(`scroll-ready:${pageRevision}:${scrollRatio().toFixed(6)}`);
+    } else {
+      reportScroll();
+    }
   };
   window.requestAnimationFrame(restoreScroll);
   window.addEventListener("load", () => window.setTimeout(restoreScroll, 0), { once: true });

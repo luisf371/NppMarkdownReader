@@ -14,6 +14,7 @@
 #include <cwchar>
 #include <cwctype>
 #include <exception>
+#include <functional>
 #include <limits>
 #include <stdexcept>
 #include <string_view>
@@ -315,7 +316,44 @@ void ReaderController::RefreshView(const int view) {
         return;
     }
 
+    if (TryReuseRetainedPage(view, *document)) return;
     RenderView(view, *document, found->second);
+}
+
+bool ReaderController::TryReuseRetainedPage(const int view, const ViewDocument& document) {
+    const RetainedPage& retained = retainedPages_[view];
+    if (!hosts_[view]) return false;
+    if (retained.bufferId != document.key.bufferId || retained.renderSerial != renderSerial_) {
+        return false;
+    }
+
+    // The retained page was rendered from this buffer's text; verify the text
+    // still matches so edits — typed while visible or made while the page was
+    // hidden, including reloads — force a fresh render instead of reuse.
+    bool contentMatches = false;
+    try {
+        const std::string source = ReadScintillaTextUtf8(document.scintilla);
+        contentMatches = source.size() == retained.contentLength &&
+            std::hash<std::string_view>{}(source) == retained.contentHash;
+    } catch (...) {
+        contentMatches = false;
+    }
+    if (!contentMatches) return false;
+
+    // Already showing this exact page: a no-op. This also makes the re-entrant
+    // buffer activation triggered by Focus() during ShowDocument() harmless.
+    if (hosts_[view]->IsVisible() && displayedBuffers_[view] == document.key.bufferId) {
+        return true;
+    }
+
+    if (!hosts_[view]->HasReadyPage()) return false;
+
+    displayedBuffers_[view] = document.key.bufferId;
+    hosts_[view]->ReShow();
+    if (retained.presentationSerial != presentationSerial_) {
+        hosts_[view]->ApplyPresentation(CurrentPresentation());
+    }
+    return true;
 }
 
 void ReaderController::RenderView(const int view, const ViewDocument& document, DocumentState& state) {
@@ -339,7 +377,8 @@ void ReaderController::RenderView(const int view, const ViewDocument& document, 
         options.lineHeight = presentation.lineHeight;
         options.initialScrollRatio = state.scrollRatio;
 
-        const RenderResult rendered = renderer_.Render(ReadScintillaTextUtf8(document.scintilla), options);
+        const std::string source = ReadScintillaTextUtf8(document.scintilla);
+        const RenderResult rendered = renderer_.Render(source, options);
         if (!rendered.success) {
             state.enabled = false;
             hosts_[view]->Hide();
@@ -349,6 +388,12 @@ void ReaderController::RenderView(const int view, const ViewDocument& document, 
             return;
         }
 
+        // Record the page identity before ShowDocument(): the focus it takes
+        // can synchronously re-enter RefreshView, which must observe this page
+        // as current rather than render the document a second time.
+        retainedPages_[view] = RetainedPage{document.key.bufferId,
+            std::hash<std::string_view>{}(source), source.size(),
+            renderSerial_, presentationSerial_};
         displayedBuffers_[view] = document.key.bufferId;
         hosts_[view]->ShowDocument(rendered.html, options.documentDirectory, presentation);
     } catch (const std::exception& exception) {
@@ -385,6 +430,7 @@ void ReaderController::DisableView(const int view, const bool restoreEditorFocus
     if (state) state->enabled = false;
     if (hosts_[view]) hosts_[view]->Hide();
     displayedBuffers_[view] = 0;
+    retainedPages_[view] = {};
 
     if (restoreEditorFocus) {
         ActivateViewDocument(view);
@@ -467,6 +513,9 @@ void ReaderController::EraseBufferState(const std::uintptr_t bufferId) {
     for (auto iterator = documentStates_.begin(); iterator != documentStates_.end();) {
         if (iterator->first.bufferId == bufferId) iterator = documentStates_.erase(iterator);
         else ++iterator;
+    }
+    for (auto& retained : retainedPages_) {
+        if (retained.bufferId == bufferId) retained = {};
     }
     for (int view = MAIN_VIEW; view <= SUB_VIEW; ++view) {
         if (displayedBuffers_[view] == bufferId) {
@@ -597,12 +646,16 @@ void ReaderController::ApplyPresentationToVisibleViews() {
 }
 
 void ReaderController::ApplyPresentationChange() {
+    ++presentationSerial_;
     settingsStore_.Save();
     ApplyPresentationToVisibleViews();
     UpdateMenuChecks();
 }
 
 void ReaderController::ApplySettingsChange() {
+    // Remote-image policy is baked into the rendered HTML, so retained pages
+    // must not be reused after this change.
+    ++renderSerial_;
     settingsStore_.Save();
     RefreshAllViews();
     UpdateMenuChecks();
@@ -729,13 +782,13 @@ void ReaderController::OnNotification(const SCNotification* const notification) 
     case NPPN_TOOLBARICONSETCHANGED:
         RegisterToolbarIcon();
         break;
-    case NPPN_FILEBEFORECLOSE: {
-        const auto bufferId = static_cast<std::uintptr_t>(notification->nmhdr.idFrom);
-        for (int view = MAIN_VIEW; view <= SUB_VIEW; ++view) {
-            if (displayedBuffers_[view] == bufferId && hosts_[view]) hosts_[view]->Hide();
-        }
+    case NPPN_FILEBEFORECLOSE:
+        // No proactive hiding here: this notification cannot tell which view a
+        // cloned buffer is closing in, so hiding would also kill the reader in
+        // a view that keeps the document open. The subsequent
+        // NPPN_BUFFERACTIVATED (next document) and NPPN_FILECLOSED (buffer
+        // fully removed) hide or re-render the hosts as appropriate.
         break;
-    }
     case NPPN_FILECLOSED:
         EraseBufferState(static_cast<std::uintptr_t>(notification->nmhdr.idFrom));
         RefreshAllViews();
@@ -747,11 +800,17 @@ void ReaderController::OnNotification(const SCNotification* const notification) 
     case NPPN_BUFFERACTIVATED:
     case NPPN_LANGCHANGED:
         EnsureReady();
+        // Title, file path, and language feed the rendered page, so saved or
+        // renamed buffers must not fall back to their retained page. Reloaded
+        // text also lands here (via NPPN_FILESAVED) because reload itself does
+        // not emit a per-buffer modification stream.
+        if (code != NPPN_BUFFERACTIVATED) ++renderSerial_;
         RefreshAllViews();
         break;
     case NPPN_DARKMODECHANGED:
         EnsureReady();
         if (settingsStore_.Values().theme == ThemeMode::FollowNotepad) {
+            ++presentationSerial_;
             ApplyPresentationToVisibleViews();
         }
         UpdateMenuChecks();
@@ -795,6 +854,7 @@ void ReaderController::Shutdown() {
         host.reset();
     }
     displayedBuffers_.fill(0);
+    retainedPages_.fill(RetainedPage{});
     documentStates_.clear();
     WebViewEnvironment::Instance().Shutdown();
     ReleaseToolbarResources();

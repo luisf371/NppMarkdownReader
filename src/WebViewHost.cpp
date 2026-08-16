@@ -182,6 +182,18 @@ void WebViewHost::ApplyPresentation(const ReaderPresentation& presentation) {
     if (pageReady_) ApplyPendingPresentation();
 }
 
+void WebViewHost::ReShow() {
+    // Re-attach the still-loaded page without navigating again: the browser
+    // keeps the exact DOM and scroll offset, so nothing has to be restored.
+    if (!hostWindow_ || !webView_) return;
+    visible_ = true;
+    ShowWindow(hostWindow_, SW_SHOWNA);
+    SetTimer(hostWindow_, kSyncTimer, 125, nullptr);
+    SyncToTarget();
+    if (controller_) controller_->put_IsVisible(TRUE);
+    Focus();
+}
+
 void WebViewHost::Hide() {
     visible_ = false;
     if (hostWindow_) {
@@ -320,7 +332,11 @@ HRESULT WebViewHost::HandleNavigationCompleted(
 
     pageReady_ = succeeded != FALSE;
     if (pageReady_) {
-        ApplyPendingPresentation();
+        // Fresh HTML already embeds the presentation values it was rendered
+        // with; only re-apply in place when a setting changed mid-navigation.
+        if (presentationRevision_ != navigationStartPresentationRevision_) {
+            ApplyPendingPresentation();
+        }
     } else if (visible_) {
         SetFailure(E_FAIL, L"The rendered Markdown could not be loaded");
     }
@@ -387,11 +403,8 @@ root.style.setProperty("--line-height", String(s.lineHeight));
 root.dataset.theme = s.dark ? "dark" : "light";
 header.hidden = !s.showHeader;
 root.dataset.settingsRevision = String(s.revision);
-window.requestAnimationFrame(() => {
-    const newMax = Math.max(0, root.scrollHeight - window.innerHeight);
-    window.scrollTo({top: ratio * newMax, behavior: "auto"});
-    window.dispatchEvent(new Event("scroll"));
-});
+const newMax = Math.max(0, root.scrollHeight - window.innerHeight);
+window.scrollTo({top: ratio * newMax, behavior: "instant"});
 return true;
 })())JS";
 
@@ -417,6 +430,8 @@ return true;
 void WebViewHost::NavigateCurrentDocument() {
     if (!webView_) return;
     pageReady_ = false;
+    scrollReportsAccepted_ = false;
+    navigationStartPresentationRevision_ = presentationRevision_;
     std::wostringstream uri;
     uri << L"https://reader.local/document?revision=" << revision_;
     const HRESULT result = webView_->Navigate(uri.str().c_str());
@@ -574,6 +589,7 @@ HRESULT WebViewHost::HandleNavigationStarting(ICoreWebView2NavigationStartingEve
         UINT64 navigationId = 0;
         if (SUCCEEDED(args->get_NavigationId(&navigationId))) {
             pageReady_ = false;
+            scrollReportsAccepted_ = false;
             activeNavigationId_ = navigationId;
         }
         return S_OK;
@@ -621,8 +637,28 @@ HRESULT WebViewHost::HandleWebMessage(ICoreWebView2WebMessageReceivedEventArgs* 
     if (FAILED(args->TryGetWebMessageAsString(&rawMessage))) return S_OK;
     const std::wstring message = TakeCoTaskString(rawMessage);
     if (message.starts_with(L"scroll:")) {
+        // Reports emitted while a page is still restoring its initial offset
+        // describe setup, not the reader position; the gate stays closed until
+        // the page announces "scroll-ready" for the current revision.
+        if (!scrollReportsAccepted_) return S_OK;
         try {
             const double ratio = std::stod(message.substr(7));
+            if (callbacks_.onScroll) callbacks_.onScroll(std::clamp(ratio, 0.0, 1.0));
+        } catch (...) {
+            // Ignore malformed messages from the embedded page.
+        }
+    } else if (message.starts_with(L"scroll-ready:")) {
+        constexpr std::size_t prefixLength = 13;
+        const std::wstring_view payload(message.data() + prefixLength,
+            message.size() - prefixLength);
+        const std::size_t separator = payload.find(L':');
+        if (separator == std::wstring_view::npos) return S_OK;
+        try {
+            const unsigned long long pageRevision =
+                std::stoull(std::wstring(payload.substr(0, separator)));
+            if (pageRevision != revision_) return S_OK;
+            scrollReportsAccepted_ = true;
+            const double ratio = std::stod(std::wstring(payload.substr(separator + 1)));
             if (callbacks_.onScroll) callbacks_.onScroll(std::clamp(ratio, 0.0, 1.0));
         } catch (...) {
             // Ignore malformed messages from the embedded page.
