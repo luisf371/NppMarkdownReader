@@ -388,6 +388,9 @@ const s = {revision:)JS" << presentationRevision
         << L",lineHeight:" << std::fixed << std::setprecision(2) << lineHeight
         << L",dark:" << (presentation.darkTheme ? L"true" : L"false")
         << L",showHeader:" << (presentation.showHeader ? L"true" : L"false")
+        << L",showToc:" << (presentation.showToc ? L"true" : L"false")
+        << L",alignLeft:" << (presentation.alignLeft ? L"true" : L"false")
+        << L",fill:" << (presentation.fillWidth ? L"true" : L"false")
         << LR"JS(};
 if (location.origin !== "https://reader.local" ||
     location.pathname !== "/document") return false;
@@ -401,10 +404,16 @@ root.style.setProperty("--font-size", String(s.fontSizePx) + "px");
 root.style.setProperty("--content-width", String(s.contentWidthPx) + "px");
 root.style.setProperty("--line-height", String(s.lineHeight));
 root.dataset.theme = s.dark ? "dark" : "light";
+root.dataset.align = s.alignLeft ? "left" : "center";
+root.dataset.toc = s.showToc ? "true" : "false";
+root.dataset.fill = s.fill ? "true" : "false";
 header.hidden = !s.showHeader;
 root.dataset.settingsRevision = String(s.revision);
 const newMax = Math.max(0, root.scrollHeight - window.innerHeight);
 window.scrollTo({top: ratio * newMax, behavior: "instant"});
+// The reader script re-derives table-of-contents placement from the new
+// content box; width/alignment changes move the content edge it anchors to.
+window.dispatchEvent(new Event("reader:relayout"));
 return true;
 })())JS";
 

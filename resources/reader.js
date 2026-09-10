@@ -8,6 +8,8 @@
   const content = document.getElementById("reader-content");
   const progress = document.getElementById("reading-progress");
   const toc = document.getElementById("reader-toc");
+  const root = document.documentElement;
+  const layout = document.querySelector(".reader-layout");
   let scrollQueued = false;
 
   const scrollRatio = () => {
@@ -67,7 +69,6 @@
       link.textContent = heading.textContent.replace(/^#/, "").trim();
       toc.append(link);
     }
-    toc.dataset.visible = "true";
 
     const links = [...toc.querySelectorAll("a")];
     const observer = new IntersectionObserver((entries) => {
@@ -78,6 +79,40 @@
     }, { rootMargin: "-15% 0px -72% 0px", threshold: 0 });
     tocHeadings.forEach((heading) => observer.observe(heading));
   }
+
+  // The contents pane is anchored to the content card's right edge, so it can
+  // never overlap the card. CSS positions it; this only decides whether the
+  // space beside the card actually fits it. Fill mode is the exception: the
+  // layout reserves space for the contents (see .reader-layout in reader.css),
+  // so the test is whether the remaining column stays at least as wide as the
+  // plugin's minimum fixed content width (560px).
+  const rootStyle = getComputedStyle(root);
+  const cssLength = (name, fallback) => {
+    const value = parseFloat(rootStyle.getPropertyValue(name));
+    return Number.isFinite(value) && value > 0 ? value : fallback;
+  };
+  const tocSpaceNeeded = cssLength("--toc-edge", 18) +
+    cssLength("--toc-width", 210) + cssLength("--toc-gap", 36);
+  const layoutSidePadding = () =>
+    (layout ? parseFloat(getComputedStyle(layout).paddingLeft) : 0) || 28;
+
+  const updateTocLayout = () => {
+    const viewport = root.clientWidth;
+    const fits = root.dataset.fill === "true"
+      ? viewport - layoutSidePadding() - tocSpaceNeeded >= 560
+      : viewport - content.getBoundingClientRect().right >= tocSpaceNeeded;
+    // data-toc is the user's Show Table of Contents setting; anything other
+    // than an explicit "false" leaves it enabled.
+    const enabled = root.dataset.toc !== "false";
+    const shown = enabled && toc.childElementCount > 0 && fits;
+    toc.dataset.shown = shown ? "true" : "false";
+    root.dataset.tocShown = shown ? "true" : "false";
+  };
+  window.addEventListener("resize", updateTocLayout, { passive: true });
+  // The host's presentation script dispatches this after changing width,
+  // alignment, or fill mode, all of which move the anchor edge.
+  window.addEventListener("reader:relayout", updateTocLayout);
+  updateTocLayout();
 
   for (const table of content.querySelectorAll("table")) {
     if (table.parentElement?.classList.contains("table-wrap")) continue;

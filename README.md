@@ -18,7 +18,7 @@ NppMarkdownReader is a native Notepad++ plugin that places a polished Markdown r
 - External links opened through Windows rather than inside the embedded browser.
 - Raw Markdown HTML disabled, restrictive Content Security Policy, blocked arbitrary schemes, and path traversal/junction containment checks.
 - PDF export through WebView2.
-- Toolbar icon and fourteen plugin commands.
+- Toolbar icon and seventeen plugin commands.
 - Settings stored in Notepad++'s plugin configuration directory.
 - Unit tests for rendering and URL/path rewriting, source validation, and a Windows CI workflow.
 
@@ -30,7 +30,10 @@ NppMarkdownReader is a native Notepad++ plugin that places a polished Markdown r
 | **Export Reader to PDF…** | Exports the currently visible rendered document. |
 | **Increase/Decrease/Reset Reader Text Size** | Updates visible readers in place when ready. |
 | **Increase/Decrease/Reset Reader Text Width** | Changes the readable text width in 80px steps, from 560px to 1400px. |
+| **Align Reader Content Left** | Pins the content card to the left edge instead of centering it, keeping the right side clear for the table of contents. |
+| **Fit Reader Content to Window** | Sizes the content card to the available pane width; the layout reserves space for the table of contents when one is shown. |
 | **Show Reader Header** | Shows or hides the filename bar while keeping the reading progress bar. |
+| **Show Table of Contents** | Enables or disables the "On this page" contents pane. On by default; the pane still appears only for documents with at least three H2/H3 headings and only when there is room beside the content. |
 | **Theme: Follow Notepad++ / Light / Dark** | Chooses the reader theme. |
 | **Allow Remote Images** | Opt-in setting with a privacy warning. Off by default. |
 | **About Markdown Reader** | Displays version and feature information. |

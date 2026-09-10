@@ -138,7 +138,10 @@ RenderResult MarkdownRenderer::Render(const std::string_view markdown, const Ren
     std::ostringstream page;
     page.imbue(std::locale::classic());
     page << "<!doctype html>\n"
-        << "<html lang=\"en\" data-theme=\"" << (options.darkTheme ? "dark" : "light") << "\">\n"
+        << "<html lang=\"en\" data-theme=\"" << (options.darkTheme ? "dark" : "light")
+        << "\" data-align=\"" << (options.alignLeft ? "left" : "center")
+        << "\" data-fill=\"" << (options.fillWidth ? "true" : "false")
+        << "\" data-toc=\"" << (options.showToc ? "true" : "false") << "\">\n"
         << "<head>\n"
         << "<meta charset=\"utf-8\">\n"
         << "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n"

@@ -34,6 +34,12 @@ int main() {
         "reading progress missing");
     Require(rendered.html.find("--content-width:860px") != std::string::npos,
         "content width missing");
+    Require(rendered.html.find("data-align=\"center\"") != std::string::npos,
+        "alignment attribute missing");
+    Require(rendered.html.find("data-fill=\"false\"") != std::string::npos,
+        "fill attribute missing");
+    Require(rendered.html.find("data-toc=\"true\"") != std::string::npos,
+        "table of contents attribute missing");
 
     options.showHeader = false;
     const auto hiddenHeader = renderer.Render("# Heading", options);
@@ -43,6 +49,22 @@ int main() {
     Require(hiddenHeader.html.find("id=\"reading-progress\"") != std::string::npos,
         "reading progress disappeared with header");
     options.showHeader = true;
+    options.alignLeft = true;
+    options.fillWidth = true;
+    const auto pinnedLayout = renderer.Render("# Heading", options);
+    Require(pinnedLayout.success, "layout toggle render failed");
+    Require(pinnedLayout.html.find("data-align=\"left\"") != std::string::npos,
+        "left alignment attribute missing");
+    Require(pinnedLayout.html.find("data-fill=\"true\"") != std::string::npos,
+        "fill attribute missing");
+    options.alignLeft = false;
+    options.fillWidth = false;
+    options.showToc = false;
+    const auto hiddenToc = renderer.Render("# Heading", options);
+    Require(hiddenToc.success, "toc toggle render failed");
+    Require(hiddenToc.html.find("data-toc=\"false\"") != std::string::npos,
+        "table of contents was not disabled");
+    options.showToc = true;
     Require(rendered.html.find("<h1>") != std::string::npos, "heading output missing");
     Require(rendered.html.find("<table>") != std::string::npos, "table output missing");
     Require(rendered.html.find("https://document.local/images/picture%20one.png") != std::string::npos,

@@ -18,6 +18,9 @@
   --font-size: 17px;
   --line-height: 1.72;
   --content-width: 860px;
+  --toc-width: 210px;
+  --toc-gap: 36px;
+  --toc-edge: 18px;
 }
 
 :root[data-theme="dark"] {
@@ -117,6 +120,12 @@ kbd {
   padding: 38px 28px 96px;
 }
 
+/* Fill mode has no free margin for the contents to occupy, so the layout
+   reserves space for it instead; reader.js toggles data-toc-shown. */
+html[data-fill="true"][data-toc-shown="true"] .reader-layout {
+  padding-right: calc(var(--toc-edge) + var(--toc-width) + var(--toc-gap));
+}
+
 .markdown-body {
   width: min(100%, var(--content-width));
   min-height: calc(100vh - 150px);
@@ -131,6 +140,12 @@ kbd {
 
 .markdown-body > :first-child { margin-top: 0; }
 .markdown-body > :last-child { margin-bottom: 0; }
+
+/* Fixed-width mode centers by default; the host flips data-align/data-fill
+   on <html> for pinned-left and fit-to-window presentation modes. */
+html[data-align="left"] .markdown-body { margin-left: 0; }
+/* Auto margins stop a grid item from stretching, so fill mode zeroes them. */
+html[data-fill="true"] .markdown-body { width: auto; margin: 0; }
 
 h1, h2, h3, h4, h5, h6 {
   position: relative;
@@ -316,12 +331,16 @@ del { color: var(--muted); }
   font-size: 0.9em;
 }
 
+/* Anchored to the content card's right edge rather than the viewport, so it
+   cannot overlap the card. reader.js shows it (data-shown) only when the
+   space beside the card actually fits it; in fill mode that space is the
+   reservation on .reader-layout above. */
 #reader-toc {
   display: none;
   position: fixed;
   top: 76px;
-  right: max(18px, calc((100vw - var(--content-width)) / 2 - 245px));
-  width: 210px;
+  left: calc(50% + var(--content-width) / 2 + var(--toc-gap));
+  width: var(--toc-width);
   max-height: calc(100vh - 100px);
   overflow: auto;
   padding: 12px 8px;
@@ -329,6 +348,9 @@ del { color: var(--muted); }
   font-size: 13px;
   line-height: 1.4;
 }
+#reader-toc[data-shown="true"] { display: block; }
+html[data-align="left"] #reader-toc { left: calc(28px + var(--content-width) + var(--toc-gap)); }
+html[data-fill="true"] #reader-toc { left: auto; right: var(--toc-edge); }
 #reader-toc .toc-title { margin: 0 0 8px 9px; color: var(--subtle); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; }
 #reader-toc a {
   display: block;
@@ -341,10 +363,6 @@ del { color: var(--muted); }
 }
 #reader-toc a[data-level="3"] { padding-left: 20px; font-size: 0.94em; }
 #reader-toc a:hover, #reader-toc a.active { border-left-color: var(--accent); background: var(--accent-soft); color: var(--text); }
-
-@media (min-width: 1370px) {
-  #reader-toc[data-visible="true"] { display: block; }
-}
 
 @media (max-width: 720px) {
   .reader-layout { padding: 18px 10px 58px; }
@@ -359,6 +377,7 @@ del { color: var(--muted); }
   body { background: #fff; font-size: 11pt; }
   #reading-progress, .reader-toolbar, #reader-toc, .copy-code { display: none !important; }
   .reader-layout { display: block; padding: 0; }
+  html[data-fill="true"][data-toc-shown="true"] .reader-layout { padding: 0; }
   .markdown-body { width: 100%; max-width: none; min-height: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
   a { color: inherit; text-decoration: underline; }
   pre, blockquote, table, img { break-inside: avoid; }

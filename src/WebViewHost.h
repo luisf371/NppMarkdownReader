@@ -29,6 +29,9 @@ struct ReaderPresentation {
     double lineHeight = 1.72;
     bool darkTheme = false;
     bool showHeader = true;
+    bool showToc = true;
+    bool alignLeft = false;
+    bool fillWidth = false;
 };
 
 class WebViewHost final {

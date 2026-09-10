@@ -31,6 +31,9 @@ void SettingsStore::Load() {
     values_.contentWidthPx = static_cast<int>(std::clamp(
         GetPrivateProfileIntW(L"Reader", L"ContentWidth", 860, iniPath_.c_str()), 560u, 1400u));
     values_.showHeader = GetPrivateProfileIntW(L"Reader", L"ShowHeader", 1, iniPath_.c_str()) != 0;
+    values_.showToc = GetPrivateProfileIntW(L"Reader", L"ShowToc", 1, iniPath_.c_str()) != 0;
+    values_.alignLeft = GetPrivateProfileIntW(L"Reader", L"AlignLeft", 0, iniPath_.c_str()) != 0;
+    values_.fillWidth = GetPrivateProfileIntW(L"Reader", L"FillWidth", 0, iniPath_.c_str()) != 0;
     values_.allowRemoteImages = GetPrivateProfileIntW(L"Reader", L"AllowRemoteImages", 0, iniPath_.c_str()) != 0;
 
     std::array<wchar_t, 32> lineHeight{};
@@ -54,6 +57,9 @@ void SettingsStore::Save() const {
     WritePrivateProfileStringW(L"Reader", L"FontSize", std::to_wstring(values_.fontSizePx).c_str(), iniPath_.c_str());
     WritePrivateProfileStringW(L"Reader", L"ContentWidth", std::to_wstring(values_.contentWidthPx).c_str(), iniPath_.c_str());
     WritePrivateProfileStringW(L"Reader", L"ShowHeader", values_.showHeader ? L"1" : L"0", iniPath_.c_str());
+    WritePrivateProfileStringW(L"Reader", L"ShowToc", values_.showToc ? L"1" : L"0", iniPath_.c_str());
+    WritePrivateProfileStringW(L"Reader", L"AlignLeft", values_.alignLeft ? L"1" : L"0", iniPath_.c_str());
+    WritePrivateProfileStringW(L"Reader", L"FillWidth", values_.fillWidth ? L"1" : L"0", iniPath_.c_str());
     WritePrivateProfileStringW(L"Reader", L"AllowRemoteImages", values_.allowRemoteImages ? L"1" : L"0", iniPath_.c_str());
     wchar_t lineHeight[32]{};
     swprintf_s(lineHeight, L"%.2f", values_.lineHeight);

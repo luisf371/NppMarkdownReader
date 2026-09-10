@@ -23,7 +23,10 @@ void __cdecl ResetFont() { ReaderController::Instance().ResetFontSize(); }
 void __cdecl IncreaseWidth() { ReaderController::Instance().IncreaseContentWidth(); }
 void __cdecl DecreaseWidth() { ReaderController::Instance().DecreaseContentWidth(); }
 void __cdecl ResetWidth() { ReaderController::Instance().ResetContentWidth(); }
+void __cdecl AlignLeft() { ReaderController::Instance().ToggleAlignLeft(); }
+void __cdecl FillWidth() { ReaderController::Instance().ToggleFillWidth(); }
 void __cdecl ToggleHeader() { ReaderController::Instance().ToggleReaderHeader(); }
+void __cdecl ToggleToc() { ReaderController::Instance().ToggleTableOfContents(); }
 void __cdecl ThemeFollow() { ReaderController::Instance().SetTheme(nppmr::ThemeMode::FollowNotepad); }
 void __cdecl ThemeLight() { ReaderController::Instance().SetTheme(nppmr::ThemeMode::Light); }
 void __cdecl ThemeDark() { ReaderController::Instance().SetTheme(nppmr::ThemeMode::Dark); }
@@ -52,7 +55,10 @@ void InitializeCommands() {
     SetCommand(CommandIndex::IncreaseContentWidth, L"Increase Reader Text Width", IncreaseWidth);
     SetCommand(CommandIndex::DecreaseContentWidth, L"Decrease Reader Text Width", DecreaseWidth);
     SetCommand(CommandIndex::ResetContentWidth, L"Reset Reader Text Width", ResetWidth);
+    SetCommand(CommandIndex::AlignContentLeft, L"Align Reader Content Left", AlignLeft);
+    SetCommand(CommandIndex::FillContentWidth, L"Fit Reader Content to Window", FillWidth);
     SetCommand(CommandIndex::ShowReaderHeader, L"Show Reader Header", ToggleHeader, nullptr, true);
+    SetCommand(CommandIndex::ShowTableOfContents, L"Show Table of Contents", ToggleToc, nullptr, true);
     SetCommand(CommandIndex::ThemeFollowNotepad, L"Theme: Follow Notepad++", ThemeFollow, nullptr, true);
     SetCommand(CommandIndex::ThemeLight, L"Theme: Light", ThemeLight);
     SetCommand(CommandIndex::ThemeDark, L"Theme: Dark", ThemeDark);

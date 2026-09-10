@@ -212,7 +212,10 @@ ReaderPresentation ReaderController::CurrentPresentation() const {
         settings.contentWidthPx,
         settings.lineHeight,
         UseDarkTheme(),
-        settings.showHeader};
+        settings.showHeader,
+        settings.showToc,
+        settings.alignLeft,
+        settings.fillWidth};
 }
 
 bool ReaderController::EnsureHost(const int view) {
@@ -374,6 +377,9 @@ void ReaderController::RenderView(const int view, const ViewDocument& document, 
         options.fontSizePx = presentation.fontSizePx;
         options.contentWidthPx = presentation.contentWidthPx;
         options.showHeader = presentation.showHeader;
+        options.showToc = presentation.showToc;
+        options.alignLeft = presentation.alignLeft;
+        options.fillWidth = presentation.fillWidth;
         options.lineHeight = presentation.lineHeight;
         options.initialScrollRatio = state.scrollRatio;
 
@@ -609,9 +615,27 @@ void ReaderController::ResetContentWidth() {
     ApplyPresentationChange();
 }
 
+void ReaderController::ToggleAlignLeft() {
+    EnsureReady();
+    settingsStore_.Values().alignLeft = !settingsStore_.Values().alignLeft;
+    ApplyPresentationChange();
+}
+
+void ReaderController::ToggleFillWidth() {
+    EnsureReady();
+    settingsStore_.Values().fillWidth = !settingsStore_.Values().fillWidth;
+    ApplyPresentationChange();
+}
+
 void ReaderController::ToggleReaderHeader() {
     EnsureReady();
     settingsStore_.Values().showHeader = !settingsStore_.Values().showHeader;
+    ApplyPresentationChange();
+}
+
+void ReaderController::ToggleTableOfContents() {
+    EnsureReady();
+    settingsStore_.Values().showToc = !settingsStore_.Values().showToc;
     ApplyPresentationChange();
 }
 
@@ -696,6 +720,12 @@ void ReaderController::UpdateMenuChecks() {
         settingsStore_.Values().allowRemoteImages);
     SetMenuCheck(CommandIndex::ShowReaderHeader,
         settingsStore_.Values().showHeader);
+    SetMenuCheck(CommandIndex::ShowTableOfContents,
+        settingsStore_.Values().showToc);
+    SetMenuCheck(CommandIndex::AlignContentLeft,
+        settingsStore_.Values().alignLeft);
+    SetMenuCheck(CommandIndex::FillContentWidth,
+        settingsStore_.Values().fillWidth);
 }
 
 void ReaderController::RegisterToolbarIcon() {

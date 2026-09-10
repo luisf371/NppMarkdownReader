@@ -14,6 +14,9 @@ struct RenderOptions {
     int fontSizePx = 17;
     int contentWidthPx = 860;
     bool showHeader = true;
+    bool showToc = true;
+    bool alignLeft = false;
+    bool fillWidth = false;
     double lineHeight = 1.72;
     double initialScrollRatio = 0.0;
 };

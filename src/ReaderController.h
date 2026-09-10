@@ -26,7 +26,10 @@ enum class CommandIndex : std::size_t {
     IncreaseContentWidth,
     DecreaseContentWidth,
     ResetContentWidth,
+    AlignContentLeft,
+    FillContentWidth,
     ShowReaderHeader,
+    ShowTableOfContents,
     ThemeFollowNotepad,
     ThemeLight,
     ThemeDark,
@@ -54,7 +57,10 @@ public:
     void IncreaseContentWidth();
     void DecreaseContentWidth();
     void ResetContentWidth();
+    void ToggleAlignLeft();
+    void ToggleFillWidth();
     void ToggleReaderHeader();
+    void ToggleTableOfContents();
     void SetTheme(ThemeMode mode);
     void ToggleRemoteImages();
     void ShowAbout() const;
