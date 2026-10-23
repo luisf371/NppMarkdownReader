@@ -8,6 +8,5 @@ CMakeUserPresets.json
 *.VC.VC.opendb
 *.zip
 __pycache__/
-cmake/
 cmake-4.4.0/
 .serena/

@@ -288,7 +288,8 @@ pre:hover .copy-code, .copy-code:focus-visible { opacity: 1; }
 
 .table-wrap { margin: 1.5em 0; overflow-x: auto; border: 1px solid var(--border); border-radius: 11px; }
 table { width: 100%; border-collapse: collapse; border-spacing: 0; font-size: 0.94em; }
-th, td { padding: 0.72em 0.86em; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+th, td { padding: 0.72em 0.86em; border-bottom: 1px solid var(--border); vertical-align: top; }
+th:not([align]) { text-align: left; }
 th { background: color-mix(in srgb, var(--code-bg) 72%, var(--surface-solid)); font-weight: 680; }
 tr:last-child td { border-bottom: 0; }
 tbody tr:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }

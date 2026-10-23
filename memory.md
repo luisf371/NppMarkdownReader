@@ -16,3 +16,9 @@
 - Tab-switch scroll reset root cause: `html{scroll-behavior:smooth}` + `scrollTo({behavior:"auto"})` animates, so post-scroll `scrollY` reads reported 0 and poisoned `DocumentState::scrollRatio`; `ExecutePresentation` could cancel the in-flight restore. Fixed via `behavior:"instant"`, a `scroll-ready:<revision>:<ratio>` page→host handshake that gates `scroll:` reports, and dropping the synthetic scroll dispatch.
 - Re-show fast path: `RetainedPage{bufferId, contentHash+len, renderSerial, presentationSerial}` per view survives `Hide()`; `RefreshView` re-shows the live page (no navigation) when the fingerprint still matches. Serials bump on save/rename/lang/remote-image policy (render) and font/theme/dark-mode (presentation). `NPPN_FILEBEFORECLOSE` no longer hides hosts (clone-safe; BUFFERACTIVATED/FILECLOSED cover it).
 - This checkout was missing gitignored `cmake/FetchWebView2.cmake` — restored from `C:\Users\Freki\Downloads\NppMarkdownReader\cmake\`. Machine-wide build deps: WebView2 SDK + MD4C at `C:\tmp\nppmarkdownreader-deps\`, CMake at `C:\tmp\nppmarkdownreader-cmake-4.4.0\cmake-4.4.0-windows-x86_64\bin` (prepend to PATH). VS2022 Community is the generator. x64 Release build + renderer tests pass.
+
+## 2026-10-22
+
+- CI `build` failures: `.gitignore` ignored `cmake/` so `FetchWebView2.cmake` was never committed (now tracked, SHA256-pinned); `windows-latest` is VS2026 so the hardcoded `-G "Visual Studio 17 2022"` was dropped (`-A` only); validator command-count tripwire bumped 14->17 (update it whenever commands are added).
+- pwsh multi-line `run:` only reports the last native command's exit code; keep one native command per step.
+- Tables: `th,td{text-align:left}` overrode MD4C's `align` attribute, ignoring `:--:`/`--:` column alignment; now `th:not([align])`. MD4C (0.5.3) only recognizes a table whose header is the first line of a paragraph, so a table directly under a text line (no blank line) renders as a paragraph.

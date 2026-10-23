@@ -57,6 +57,11 @@ int main() {
         "left alignment attribute missing");
     Require(pinnedLayout.html.find("data-fill=\"true\"") != std::string::npos,
         "fill attribute missing");
+    const auto aligned = renderer.Render("| L | C | R |\n|:--|:-:|--:|\n| a \\| b | 2 | 3 |\n", options);
+    Require(aligned.html.find("<th align=\"center\">C</th>") != std::string::npos &&
+            aligned.html.find("<td align=\"right\">3</td>") != std::string::npos &&
+            aligned.html.find("<td align=\"left\">a | b</td>") != std::string::npos,
+        "table alignment or escaped pipe output missing");
     options.alignLeft = false;
     options.fillWidth = false;
     options.showToc = false;
