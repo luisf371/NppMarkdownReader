@@ -21,15 +21,16 @@ jobs:
 
       - name: Validate source
         shell: pwsh
-        run: |
-          python scripts/validate_source.py
-          node --check resources/reader.js
+        run: python scripts/validate_source.py
+
+      - name: Validate reader script
+        shell: pwsh
+        run: node --check resources/reader.js
 
       - name: Configure
         shell: pwsh
         run: >-
           cmake -S . -B out/build/${{ matrix.architecture }}
-          -G "Visual Studio 17 2022"
           -A ${{ matrix.architecture }}
           -DNPPMR_BUILD_TESTS=ON
 

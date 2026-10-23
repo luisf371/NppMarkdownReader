@@ -59,7 +59,7 @@ plugin = text("src/PluginMain.cpp")
 for export in ("setInfo", "getName", "getFuncsArray", "beNotified", "messageProc", "isUnicode"):
     require(re.search(rf'__declspec\(dllexport\).*\b{export}\s*\(', plugin) is not None,
             f"Missing plugin export: {export}")
-require(plugin.count("SetCommand(CommandIndex::") == 14, "Expected exactly fourteen command registrations")
+require(plugin.count("SetCommand(CommandIndex::") == 17, "Expected exactly seventeen command registrations")
 
 api = text("src/PluginApi.h")
 require("int modificationType" in api, "SCNotification does not expose modificationType")
